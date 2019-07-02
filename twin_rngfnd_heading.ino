@@ -8,14 +8,22 @@
 #define UWB_TAG_FRAME_OK 3
 #define UWB_TAG_FRAME_BAD 4
 
-VL53L1X sensor;
-VL53L1X sensor2;
-uint16_t r1 = 0;
-uint16_t r2 = 0;
+#define TUNNEL_WIDTH_MM 1250.0f
+#define DIST_TWIN_RNGFND_MM 10.0f
+
+//#define MY_DEBUG
+
+VL53L1X sensor_r;
+VL53L1X sensor_l;
+uint16_t rr = 0;
+uint16_t rl = 0;
 byte state = UWB_TAG_FRAME_NOT_FOUND;
 byte offset = 0;
 byte chk_sum = 0;
 uint32_t dist0 = 0;
+float dist_wall_m = 0;
+float dist_uwb_m = 0;
+float yaw = 0;  
 
 void setup()
 {
@@ -33,19 +41,19 @@ void setup()
 
   digitalWrite(8, HIGH);
   delay(500);
-  sensor.setTimeout(500);
-  if (!sensor.init())
+  sensor_l.setTimeout(500);
+  if (!sensor_l.init())
   {
-    Serial.println("Failed to detect and initialize sensor!");
+    Serial.println("Failed to detect and initialize sensor_l!");
     while (1);
   }
-  sensor.setAddress(0x2b);
+  sensor_l.setAddress(0x2b);
 
   digitalWrite(9, HIGH);
   delay(500);
-  if (!sensor2.init())
+  if (!sensor_r.init())
   {
-    Serial.println("Failed to detect and initialize sensor2!");
+    Serial.println("Failed to detect and initialize sensor_r!");
     while (1);
   }
   
@@ -54,22 +62,22 @@ void setup()
   // the minimum timing budget is 20 ms for short distance mode and 33 ms for
   // medium and long distance modes. See the VL53L1X datasheet for more
   // information on range and timing limits.
-  sensor.setDistanceMode(VL53L1X::Long);
-  sensor.setMeasurementTimingBudget(80000);
+  sensor_r.setDistanceMode(VL53L1X::Long);
+  sensor_r.setMeasurementTimingBudget(80000);
+
+  sensor_l.setDistanceMode(VL53L1X::Long);
+  sensor_l.setMeasurementTimingBudget(80000);
 
   // Start continuous readings at a rate of one measurement every 50 ms (the
   // inter-measurement period). This period should be at least as long as the
   // timing budget.
-  sensor.startContinuous(100);
-
-  sensor2.setDistanceMode(VL53L1X::Long);
-  sensor2.setMeasurementTimingBudget(80000);
-  sensor2.startContinuous(100);
+  sensor_r.startContinuous(100);
+  
+  sensor_l.startContinuous(100);
 }
 
 void loop()
-{
-  uint32_t good_dist = 0;
+{  
   byte buf[128];
   size_t count = Serial1.readBytes(buf, 128);
   for (int i = 0; i < count; i++) {
@@ -99,8 +107,9 @@ void loop()
             chk_sum = chk_sum & 0xff;
             if (c == chk_sum) {
                 state = UWB_TAG_FRAME_NOT_FOUND;
-                good_dist = dist0;
-                //print 'ok', dist0
+                dist_uwb_m = dist0 * 0.001;
+                //String msg = "dist0:";
+                //Serial.println(msg + dist0);
             } else {
                 state = UWB_TAG_FRAME_NOT_FOUND;
                 //print 'bad', c, chk_sum
@@ -112,14 +121,36 @@ void loop()
   //if (good_dist >0) {
   //  String msg = "dist:";
   //  Serial.println(msg + good_dist);
-  //}
-  //String msg = "range:";
-  if (sensor.dataReady()) r1 = sensor.read();
-  if (sensor2.dataReady()) r2 = sensor2.read();
-  if (r1 > 0 && r2 > 0) {
-    //msg = msg + r1 + ":" + r2;    
+  //}  
+  if (sensor_r.dataReady()) rr = sensor_r.read();
+  if (sensor_l.dataReady()) rl = sensor_l.read();
+  if (rr > 0 && rl > 0) {
+    //String msg = "rng:";
+    //msg = msg + rr + ":" + rl;    
     //Serial.println(msg);
-    r1 = r2 = 0;
+    float rng_sum = rr + rl + DIST_TWIN_RNGFND_MM;
+    if (rng_sum < TUNNEL_WIDTH_MM) rng_sum = TUNNEL_WIDTH_MM; //avoid NaN
+    yaw = acosf(TUNNEL_WIDTH_MM / rng_sum);
+    dist_wall_m = rr * cosf(yaw) * 0.001;
+    yaw = yaw + PI * 0.5;
+    //msg = msg + rl;
+    //Serial.println(msg);
+    rr = 0;
+    rl = 0;
+  }
+  if (dist_wall_m > 0 && dist_uwb_m > 0) {
+#ifdef MY_DEBUG    
+    String dbg = "send ";
+    dbg = dbg + dist_wall_m + "," + dist_uwb_m + "," + yaw;
+    Serial.println(dbg);
+#endif    
+    mavlink_message_t msg;
+    uint8_t buf[MAVLINK_MAX_PACKET_LEN];
+    mavlink_msg_vision_position_estimate_pack(0, 0, &msg, micros(), dist_wall_m, dist_uwb_m, 0, 0, 0, yaw);
+    uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
+    Serial1.write(buf, len);
+    dist_wall_m = 0;
+    dist_uwb_m = 0;    
   }
   //if (sensor.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
 }
