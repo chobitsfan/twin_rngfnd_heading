@@ -8,7 +8,7 @@
 #define UWB_TAG_FRAME_OK 3
 #define UWB_TAG_FRAME_BAD 4
 
-#define TUNNEL_WIDTH_MM 1250.0f
+#define TUNNEL_WIDTH_MM 1995.0f
 #define DIST_TWIN_RNGFND_MM 10.0f
 
 //#define MY_DEBUG
@@ -24,9 +24,14 @@ uint32_t dist0 = 0;
 float dist_wall_m = 0;
 float dist_uwb_m = 0;
 float yaw = 0;  
+unsigned long prv_ts = 0;
 
 void setup()
 {
+  randomSeed(analogRead(0));
+  
+  delay(3000);
+  
   Serial.begin(9600);
   Serial1.setTimeout(10);
   Serial1.begin(115200);
@@ -78,6 +83,17 @@ void setup()
 
 void loop()
 {  
+#if 0
+  unsigned long now_ts = millis();
+  if (now_ts - prv_ts > 100) {
+    mavlink_message_t msg;
+    uint8_t buf[MAVLINK_MAX_PACKET_LEN];
+    mavlink_msg_vision_position_estimate_pack(0, 0, &msg, micros(), 1.0f, 1.0f + random(10)*0.1, 0, 0, 0, 1.0f);
+    uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
+    Serial1.write(buf, len);
+    prv_ts = now_ts;
+  }
+#else
   byte buf[128];
   size_t count = Serial1.readBytes(buf, 128);
   for (int i = 0; i < count; i++) {
@@ -152,5 +168,5 @@ void loop()
     dist_wall_m = 0;
     dist_uwb_m = 0;    
   }
-  //if (sensor.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
+#endif
 }
