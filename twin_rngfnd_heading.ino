@@ -14,9 +14,9 @@
 //#define MY_DEBUG
 
 VL53L1X sensor_r;
-VL53L1X sensor_l;
+VL53L1X sensor_f;
 uint16_t rr = 0;
-uint16_t rl = 0;
+uint16_t rf = 0;
 byte state = UWB_TAG_FRAME_NOT_FOUND;
 byte offset = 0;
 byte chk_sum = 0;
@@ -46,13 +46,13 @@ void setup()
 
   digitalWrite(8, HIGH);
   delay(500);
-  sensor_l.setTimeout(500);
-  if (!sensor_l.init())
+  sensor_f.setTimeout(500);
+  if (!sensor_f.init())
   {
-    Serial.println("Failed to detect and initialize sensor_l!");
+    Serial.println("Failed to detect and initialize sensor_f!");
     while (1);
   }
-  sensor_l.setAddress(0x2b);
+  sensor_f.setAddress(0x2b);
 
   digitalWrite(9, HIGH);
   delay(500);
@@ -70,15 +70,15 @@ void setup()
   sensor_r.setDistanceMode(VL53L1X::Long);
   sensor_r.setMeasurementTimingBudget(80000);
 
-  sensor_l.setDistanceMode(VL53L1X::Long);
-  sensor_l.setMeasurementTimingBudget(80000);
+  sensor_f.setDistanceMode(VL53L1X::Long);
+  sensor_f.setMeasurementTimingBudget(80000);
 
   // Start continuous readings at a rate of one measurement every 50 ms (the
   // inter-measurement period). This period should be at least as long as the
   // timing budget.
   sensor_r.startContinuous(100);
   
-  sensor_l.startContinuous(100);
+  sensor_f.startContinuous(100);
 }
 
 void loop()
@@ -139,21 +139,23 @@ void loop()
   //  Serial.println(msg + good_dist);
   //}  
   if (sensor_r.dataReady()) rr = sensor_r.read();
-  if (sensor_l.dataReady()) rl = sensor_l.read();
-  if (rr > 0 && rl > 0) {
+  if (sensor_f.dataReady()) rf = sensor_f.read();
+  if (rr > 0 && rf > 0) {    
+    float angle_a = 0.0f;
+    if (rf < rr) {
+      angle_a = atan2f(rr, rf);
+      yaw = PI * 0.5 - PI * 0.25 + angle_a;
+      dist_wall_m = rf * sinf(angle_a) * 0.001;
+    } else {      
+      angle_a = atan2f(rf, rr);
+      yaw = PI * 0.5 + PI * 0.25 - angle_a; 
+      dist_wall_m = rr * sinf(angle_a) * 0.001;
+    }        
     //String msg = "rng:";
-    //msg = msg + rr + ":" + rl;    
-    //Serial.println(msg);
-    float rng_sum = rr + rl + DIST_TWIN_RNGFND_MM;
-    if (rng_sum < TUNNEL_WIDTH_MM) rng_sum = TUNNEL_WIDTH_MM; //avoid NaN
-    float val = TUNNEL_WIDTH_MM / rng_sum;
-    yaw = acosf(val);
-    dist_wall_m = rr * val * 0.001;
-    yaw = yaw + PI * 0.5;
-    //msg = msg + rl;
+    //msg = msg + yaw + ":" + dist_wall_m;
     //Serial.println(msg);
     rr = 0;
-    rl = 0;
+    rf = 0;
   }
   if (dist_wall_m > 0 && dist_uwb_m > 0) {
 #ifdef MY_DEBUG    
