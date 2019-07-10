@@ -8,7 +8,7 @@
 #define UWB_TAG_FRAME_OK 3
 #define UWB_TAG_FRAME_BAD 4
 
-#define TUNNEL_WIDTH_MM 1995.0f
+#define TUNNEL_WIDTH_MM 1000.0f
 #define DIST_TWIN_RNGFND_MM 10.0f
 
 //#define MY_DEBUG
@@ -146,8 +146,9 @@ void loop()
     //Serial.println(msg);
     float rng_sum = rr + rl + DIST_TWIN_RNGFND_MM;
     if (rng_sum < TUNNEL_WIDTH_MM) rng_sum = TUNNEL_WIDTH_MM; //avoid NaN
-    yaw = acosf(TUNNEL_WIDTH_MM / rng_sum);
-    dist_wall_m = rr * cosf(yaw) * 0.001;
+    float val = TUNNEL_WIDTH_MM / rng_sum;
+    yaw = acosf(val);
+    dist_wall_m = rr * val * 0.001;
     yaw = yaw + PI * 0.5;
     //msg = msg + rl;
     //Serial.println(msg);
