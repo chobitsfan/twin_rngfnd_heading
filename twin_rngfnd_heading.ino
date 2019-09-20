@@ -11,6 +11,9 @@
 #define TUNNEL_WIDTH_MM 1000.0f
 #define DIST_TWIN_RNGFND_MM 10.0f
 
+#define SHUT_GPIO_F 19
+#define SHUT_GPIO_R 18
+
 VL53L1X sensor_r;
 VL53L1X sensor_f;
 uint16_t rr = 0;
@@ -36,13 +39,13 @@ void setup()
   Wire.begin();
   Wire.setClock(400000); // use 400 kHz I2C
 
-  pinMode(8, OUTPUT);
-  pinMode(9, OUTPUT);
-  digitalWrite(8, LOW);  
-  digitalWrite(8, LOW);
+  pinMode(SHUT_GPIO_F, OUTPUT);
+  pinMode(SHUT_GPIO_R, OUTPUT);
+  digitalWrite(SHUT_GPIO_F, LOW);
+  digitalWrite(SHUT_GPIO_R, LOW);
   delay(500);
 
-  digitalWrite(8, HIGH);
+  digitalWrite(SHUT_GPIO_F, HIGH);
   delay(500);
   sensor_f.setTimeout(500);
   if (!sensor_f.init())
@@ -52,7 +55,7 @@ void setup()
   }
   sensor_f.setAddress(0x2b);
 
-  digitalWrite(9, HIGH);
+  digitalWrite(SHUT_GPIO_R, HIGH);
   delay(500);
   sensor_r.setTimeout(500);
   if (!sensor_r.init())
