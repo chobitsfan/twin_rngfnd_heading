@@ -39,7 +39,7 @@ void setup()
   pinMode(8, OUTPUT);
   pinMode(9, OUTPUT);
   digitalWrite(8, LOW);  
-  digitalWrite(8, LOW);
+  digitalWrite(9, LOW);
   delay(500);
 
   digitalWrite(8, HIGH);
