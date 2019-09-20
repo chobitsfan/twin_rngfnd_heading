@@ -11,8 +11,6 @@
 #define TUNNEL_WIDTH_MM 1000.0f
 #define DIST_TWIN_RNGFND_MM 10.0f
 
-//#define MY_DEBUG
-
 VL53L1X sensor_r;
 VL53L1X sensor_f;
 uint16_t rr = 0;
@@ -56,6 +54,7 @@ void setup()
 
   digitalWrite(9, HIGH);
   delay(500);
+  sensor_r.setTimeout(500);
   if (!sensor_r.init())
   {
     Serial.println("Failed to detect and initialize sensor_r!");
@@ -76,24 +75,12 @@ void setup()
   // Start continuous readings at a rate of one measurement every 50 ms (the
   // inter-measurement period). This period should be at least as long as the
   // timing budget.
-  sensor_r.startContinuous(100);
-  
-  sensor_f.startContinuous(100);
+  sensor_r.startContinuous(90);
+  sensor_f.startContinuous(90);
 }
 
 void loop()
 {  
-#if 0
-  unsigned long now_ts = millis();
-  if (now_ts - prv_ts > 100) {
-    mavlink_message_t msg;
-    uint8_t buf[MAVLINK_MAX_PACKET_LEN];
-    mavlink_msg_vision_position_estimate_pack(0, 0, &msg, micros(), 1.0f, 1.0f + random(10)*0.1, 0, 0, 0, 1.0f);
-    uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
-    Serial1.write(buf, len);
-    prv_ts = now_ts;
-  }
-#else
   byte buf[128];
   size_t count = Serial1.readBytes(buf, 128);
   for (int i = 0; i < count; i++) {
@@ -124,8 +111,10 @@ void loop()
             if (c == chk_sum) {
                 state = UWB_TAG_FRAME_NOT_FOUND;
                 dist_uwb_m = dist0 * 0.001;
-                //String msg = "dist0:";
-                //Serial.println(msg + dist0);
+#if 0
+                String msg = "dist0:";
+                Serial.println(msg + dist0);
+#endif
             } else {
                 state = UWB_TAG_FRAME_NOT_FOUND;
                 //print 'bad', c, chk_sum
@@ -141,6 +130,11 @@ void loop()
   if (sensor_r.dataReady()) rr = sensor_r.read();
   if (sensor_f.dataReady()) rf = sensor_f.read();
   if (rr > 0 && rf > 0) {    
+#if 0
+    String msg = "rng:";
+    msg = msg + rr + ":" + rf;
+    Serial.println(msg);
+#endif
     float angle_a = 0.0f;
     if (rf < rr) {
       angle_a = atan2f(rr, rf);
@@ -157,8 +151,8 @@ void loop()
     rr = 0;
     rf = 0;
   }
-  if (dist_wall_m > 0 && dist_uwb_m > 0) {
-#ifdef MY_DEBUG    
+  if (dist_wall_m > 0 && dist_uwb_m > 0 && dist_uwb_m < 1000) {
+#if 0
     String dbg = "send ";
     dbg = dbg + dist_wall_m + "," + dist_uwb_m + "," + yaw;
     Serial.println(dbg);
@@ -171,5 +165,4 @@ void loop()
     dist_wall_m = 0;
     dist_uwb_m = 0;    
   }
-#endif
 }
