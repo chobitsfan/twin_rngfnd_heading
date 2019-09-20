@@ -8,8 +8,7 @@
 #define UWB_TAG_FRAME_OK 3
 #define UWB_TAG_FRAME_BAD 4
 
-#define TUNNEL_WIDTH_MM 1000.0f
-#define DIST_TWIN_RNGFND_MM 10.0f
+#define DIST_TWIN_RNGFND_MM 300.0
 
 #define SHUT_GPIO_F 19
 #define SHUT_GPIO_R 18
@@ -138,15 +137,15 @@ void loop()
     msg = msg + rr + ":" + rf;
     Serial.println(msg);
 #endif
-    float angle_a = 0.0f;
+    double theta = 0;
     if (rf < rr) {
-      angle_a = atan2f(rr, rf);
-      yaw = PI * 0.5 - PI * 0.25 + angle_a;
-      dist_wall_m = rf * sinf(angle_a) * 0.001;
+      theta = atan2(rr - rf, DIST_TWIN_RNGFND_MM);
+      yaw = PI * 0.5 + theta;
+      dist_wall_m = (rf + rr) * 0.5 * cos(theta);
     } else {      
-      angle_a = atan2f(rf, rr);
-      yaw = PI * 0.5 + PI * 0.25 - angle_a; 
-      dist_wall_m = rr * sinf(angle_a) * 0.001;
+      theta = atan2(rf - rr, DIST_TWIN_RNGFND_MM);
+      yaw = PI * 0.5 - theta;
+      dist_wall_m = (rf + rr) * 0.5 * cos(theta);
     }        
     //String msg = "rng:";
     //msg = msg + yaw + ":" + dist_wall_m;
