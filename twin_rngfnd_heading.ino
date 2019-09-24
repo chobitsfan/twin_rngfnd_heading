@@ -141,11 +141,11 @@ void loop()
     if (rf < rr) {
       theta = atan2(rr - rf, DIST_TWIN_RNGFND_MM);
       yaw = PI * 0.5 + theta;
-      dist_wall_m = (rf + rr) * 0.5 * cos(theta);
+      dist_wall_m = (rf + rr) * 0.5 * cos(theta) * 0.0001;
     } else {      
       theta = atan2(rf - rr, DIST_TWIN_RNGFND_MM);
       yaw = PI * 0.5 - theta;
-      dist_wall_m = (rf + rr) * 0.5 * cos(theta);
+      dist_wall_m = (rf + rr) * 0.5 * cos(theta) * 0.0001;
     }        
     //String msg = "rng:";
     //msg = msg + yaw + ":" + dist_wall_m;
