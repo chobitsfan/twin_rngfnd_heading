@@ -132,24 +132,21 @@ void loop()
   if (sensor_r.dataReady()) rr = sensor_r.read();
   if (sensor_f.dataReady()) rf = sensor_f.read();
   if (rr > 0 && rf > 0) {    
-#if 0
-    String msg = "rng:";
-    msg = msg + rr + ":" + rf;
-    Serial.println(msg);
-#endif
     double theta = 0;
     if (rf < rr) {
       theta = atan2(rr - rf, DIST_TWIN_RNGFND_MM);
       yaw = PI * 0.5 + theta;
-      dist_wall_m = (rf + rr) * 0.5 * cos(theta) * 0.0001;
+      dist_wall_m = (rf + rr) * 0.5 * cos(theta) * 0.001;
     } else {      
       theta = atan2(rf - rr, DIST_TWIN_RNGFND_MM);
       yaw = PI * 0.5 - theta;
-      dist_wall_m = (rf + rr) * 0.5 * cos(theta) * 0.0001;
+      dist_wall_m = (rf + rr) * 0.5 * cos(theta) * 0.001;
     }        
-    //String msg = "rng:";
-    //msg = msg + yaw + ":" + dist_wall_m;
-    //Serial.println(msg);
+#if 0
+    String msg = "rng:";
+    msg = msg + rr + ":" + rf + ":" + theta + ":" + dist_wall_m;
+    Serial.println(msg);
+#endif
     rr = 0;
     rf = 0;
   }
