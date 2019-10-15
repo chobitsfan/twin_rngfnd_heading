@@ -25,7 +25,7 @@ byte state = UWB_TAG_FRAME_NOT_FOUND;
 byte offset = 0;
 byte chk_sum = 0;
 uint32_t dist0 = 0;
-float dist_wall_m = 0;
+float dist_wall_m = NAN;
 float dist_uwb_m = 0;
 float yaw = 0;  
 unsigned long prv_ts = 0;
@@ -183,6 +183,7 @@ void loop()
 #endif  
   if (rr > 0 && rf > 0) {    
     double theta = 0;
+#ifdef RIGHT_WALL    
     if (rf < rr) {
       theta = atan2(rr - rf, DIST_TWIN_RNGFND_MM);
       yaw = PI * 0.5 + theta;
@@ -192,10 +193,18 @@ void loop()
       yaw = PI * 0.5 - theta;
       dist_wall_m = (rf + rr) * 0.5 * cos(theta) * 0.001;
     }
-#ifndef RIGHT_WALL
-      dist_wall_m = -dist_wall_m;    
-#endif
-#if 1
+#else
+    if (rf < rr) {
+      theta = atan2(rr - rf, DIST_TWIN_RNGFND_MM);
+      yaw = PI * 0.5 - theta;
+      dist_wall_m = (rf + rr) * 0.5 * cos(theta) * -0.001;
+    } else {      
+      theta = atan2(rf - rr, DIST_TWIN_RNGFND_MM);
+      yaw = PI * 0.5 + theta;
+      dist_wall_m = (rf + rr) * 0.5 * cos(theta) * -0.001;
+    }
+#endif    
+#if 0
     String msg = "rng:";
     msg = msg + rr + ":" + rf + ":" + theta + ":" + dist_wall_m;
     Serial.println(msg);
@@ -203,7 +212,7 @@ void loop()
     rr = 0;
     rf = 0;
   }
-  if (dist_wall_m > 0 && dist_uwb_m > 0 && dist_uwb_m < 1000) {
+  if (!isnan(dist_wall_m) && dist_uwb_m > 0 && dist_uwb_m < 1000) {
 #if 0
     String dbg = "send ";
     dbg = dbg + dist_wall_m + "," + dist_uwb_m + "," + yaw;
@@ -214,7 +223,7 @@ void loop()
     mavlink_msg_vision_position_estimate_pack(0, 0, &msg, micros(), dist_wall_m, dist_uwb_m, 0, 0, 0, yaw);
     uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
     Serial1.write(buf, len);
-    dist_wall_m = 0;
+    dist_wall_m = NAN;
     dist_uwb_m = 0;    
   }
 }
