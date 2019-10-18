@@ -18,8 +18,10 @@
 #define SHUT_GPIO_LF 20
 #define SHUT_GPIO_LR 21
 
-VL53L1X sensor_r;
-VL53L1X sensor_f;
+VL53L1X sensor_rr;
+VL53L1X sensor_rf;
+VL53L1X sensor_lr;
+VL53L1X sensor_lf;
 uint16_t rr = 0;
 uint16_t rf = 0;
 byte state = UWB_TAG_FRAME_NOT_FOUND;
@@ -46,87 +48,93 @@ void setup()
   digitalWrite(SHUT_GPIO_RR, LOW);
   digitalWrite(SHUT_GPIO_LF, LOW);
   digitalWrite(SHUT_GPIO_LR, LOW);
-  delay(10);     
 
   Serial1.begin(115200);
   Serial1.setTimeout(10);
   Wire.begin();
   Wire.setClock(400000); // use 400 kHz I2C  
 
-  Serial.println("init sensor_f...");
-#ifdef RIGHT_WALL
+  Serial.println("init sensor_rf...");
   digitalWrite(SHUT_GPIO_RF, HIGH);
-#else
-  digitalWrite(SHUT_GPIO_LF, HIGH);
-#endif
   delay(10);
-  sensor_f.setTimeout(500);  
-  while (!sensor_f.init())
+  sensor_rf.setTimeout(500);  
+  while (!sensor_rf.init())
   {
-    Serial.println("Failed to detect and initialize sensor_f!");
-#ifdef RIGHT_WALL    
-    digitalWrite(SHUT_GPIO_RF, LOW);
-    delay(10);
-    digitalWrite(SHUT_GPIO_RF, HIGH);
-    delay(10);
-#else
-    digitalWrite(SHUT_GPIO_LF, LOW);
-    delay(10);
-    digitalWrite(SHUT_GPIO_LF, HIGH);
-    delay(10);
-#endif    
+    Serial.println("Failed to detect and initialize sensor_rf!");
+    while (1);
   }
-  sensor_f.setAddress(0x2b);
-  Serial.println("sensor_f ok");
+  delay(100);
+  sensor_rf.setAddress(0x37);
+  Serial.println("sensor_rf ok");
   
-  Serial.println("init sensor_r...");
-#ifdef RIGHT_WALL
+  Serial.println("init sensor_rr...");
   digitalWrite(SHUT_GPIO_RR, HIGH);
-#else
-  digitalWrite(SHUT_GPIO_LR, HIGH);  
-#endif  
   delay(10);
-  sensor_r.setTimeout(500);
-  while (!sensor_r.init())
+  sensor_rr.setTimeout(500);
+  while (!sensor_rr.init())
   {
-    Serial.println("Failed to detect and initialize sensor_r!");
-#ifdef RIGHT_WALL
-    digitalWrite(SHUT_GPIO_RR, LOW);
-    delay(10);
-    digitalWrite(SHUT_GPIO_RR, HIGH);
-    delay(10);
-#else
-    digitalWrite(SHUT_GPIO_LR, LOW);
-    delay(10);
-    digitalWrite(SHUT_GPIO_LR, HIGH);
-    delay(10);
-#endif    
+    Serial.println("Failed to detect and initialize sensor_rr!");
+    while (1);
   }
-  Serial.println("sensor_r ok");
-  
+  delay(100);
+  sensor_rr.setAddress(0x35);
+  Serial.println("sensor_rr ok");
+
+  Serial.println("init sensor_lf...");
+  digitalWrite(SHUT_GPIO_LF, HIGH);
+  delay(10);
+  sensor_lf.setTimeout(500);  
+  while (!sensor_lf.init())
+  {
+    Serial.println("Failed to detect and initialize sensor_lf!");
+    while (1);
+  }
+  delay(100);
+  sensor_lf.setAddress(0x33);
+  Serial.println("sensor_lf ok");
+
+  Serial.println("init sensor_lr...");
+  digitalWrite(SHUT_GPIO_LR, HIGH);
+  delay(10);
+  sensor_lr.setTimeout(500);
+  while (!sensor_lr.init())
+  {
+    Serial.println("Failed to detect and initialize sensor_lr!");
+    while (1);
+  }
+  Serial.println("sensor_lr ok");
+
+#ifdef RIGHT_WALL      
   // Use long distance mode and allow up to 50000 us (50 ms) for a measurement.
   // You can change these settings to adjust the performance of the sensor, but
   // the minimum timing budget is 20 ms for short distance mode and 33 ms for
   // medium and long distance modes. See the VL53L1X datasheet for more
   // information on range and timing limits.
-  sensor_r.setDistanceMode(VL53L1X::Long);
-  sensor_r.setMeasurementTimingBudget(80000);
-
-  sensor_f.setDistanceMode(VL53L1X::Long);
-  sensor_f.setMeasurementTimingBudget(80000);
+  sensor_rf.setDistanceMode(VL53L1X::Long);
+  sensor_rr.setMeasurementTimingBudget(80000);
+  
+  sensor_rr.setDistanceMode(VL53L1X::Long);
+  sensor_rr.setMeasurementTimingBudget(80000);
 
   // Start continuous readings at a rate of one measurement every 50 ms (the
   // inter-measurement period). This period should be at least as long as the
   // timing budget.
-  sensor_r.startContinuous(90);
-  sensor_f.startContinuous(90);
+  sensor_rf.startContinuous(90);
+  sensor_rr.startContinuous(90);  
+#else  
+  sensor_lf.setDistanceMode(VL53L1X::Long);
+  sensor_lr.setMeasurementTimingBudget(80000);
   
-#ifdef RIGHT_WALL
-  Serial.println("right wall");
-#else
-  Serial.println("left wall");
-#endif
+  sensor_lr.setDistanceMode(VL53L1X::Long);
+  sensor_lr.setMeasurementTimingBudget(80000);
 
+  // Start continuous readings at a rate of one measurement every 50 ms (the
+  // inter-measurement period). This period should be at least as long as the
+  // timing budget.
+  sensor_lf.startContinuous(90);
+  sensor_lr.startContinuous(90);  
+#endif  
+  
 #ifdef WAIT_FC_PWM  
   int pwm_value = 1000;  
   while (pwm_value < 1500) {
@@ -181,45 +189,39 @@ void loop()
         chk_sum = chk_sum + c;
     }
   }
-  //if (good_dist >0) {
-  //  String msg = "dist:";
-  //  Serial.println(msg + good_dist);
-  //}  
-  if (sensor_r.dataReady()) rr = sensor_r.read();
-  if (sensor_f.dataReady()) rf = sensor_f.read();
-#if 0
-  if (rr > 0 || rf > 0) {
-    String msg = "rng:";
-    msg = msg + rr + ":" + rf;
-    Serial.println(msg);    
-  }  
+#ifdef RIGHT_WALL    
+  if (sensor_rf.dataReady()) rf = sensor_rf.read();
+  if (sensor_rr.dataReady()) rr = sensor_rr.read();
+#else
+  if (sensor_lf.dataReady()) rf = sensor_lf.read();
+  if (sensor_lr.dataReady()) rr = sensor_lr.read();
 #endif  
   if (rr > 0 && rf > 0) {    
     double theta = 0;
 #ifdef RIGHT_WALL    
     if (rf < rr) {
       theta = atan2(rr - rf, DIST_TWIN_RNGFND_MM);
-      yaw = PI * 0.5 + theta;
-      dist_wall_m = (rf + rr) * 0.5 * cos(theta) * 0.001;
+      yaw = theta;
+      dist_wall_m = (rf + rr) * 0.5 * cos(theta) * -0.001;
     } else {      
       theta = atan2(rf - rr, DIST_TWIN_RNGFND_MM);
-      yaw = PI * 0.5 - theta;
-      dist_wall_m = (rf + rr) * 0.5 * cos(theta) * 0.001;
+      yaw = 2 * PI - theta;
+      dist_wall_m = (rf + rr) * 0.5 * cos(theta) * -0.001;
     }
 #else
     if (rf < rr) {
       theta = atan2(rr - rf, DIST_TWIN_RNGFND_MM);
-      yaw = PI * 0.5 - theta;
-      dist_wall_m = (rf + rr) * 0.5 * cos(theta) * -0.001;
+      yaw = 2 * PI - theta;
+      dist_wall_m = (rf + rr) * 0.5 * cos(theta) * 0.001;
     } else {      
       theta = atan2(rf - rr, DIST_TWIN_RNGFND_MM);
-      yaw = PI * 0.5 + theta;
-      dist_wall_m = (rf + rr) * 0.5 * cos(theta) * -0.001;
+      yaw = theta;
+      dist_wall_m = (rf + rr) * 0.5 * cos(theta) * 0.001;
     }
 #endif    
 #if 0
     String msg = "rng:";
-    msg = msg + rr + ":" + rf + ":" + theta + ":" + dist_wall_m;
+    msg = msg + rf + ":" + rr + ":" + theta + ":" + dist_wall_m;
     Serial.println(msg);
 #endif
     rr = 0;
@@ -233,7 +235,7 @@ void loop()
 #endif    
     mavlink_message_t msg;
     uint8_t buf[MAVLINK_MAX_PACKET_LEN];
-    mavlink_msg_vision_position_estimate_pack(0, 0, &msg, micros(), dist_wall_m, dist_uwb_m, 0, 0, 0, yaw);
+    mavlink_msg_vision_position_estimate_pack(0, 0, &msg, micros(), dist_uwb_m, dist_wall_m, 0, 0, 0, yaw);
     uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
     Serial1.write(buf, len);
     dist_wall_m = NAN;
