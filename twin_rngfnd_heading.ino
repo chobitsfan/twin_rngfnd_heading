@@ -3,6 +3,7 @@
 #include "common/mavlink.h"
 
 //#define RIGHT_WALL
+#define WAIT_FC_PWM
 
 #define UWB_TAG_FRAME_NOT_FOUND 0
 #define UWB_TAG_FRAME_HEADER 1
@@ -33,6 +34,9 @@ unsigned long prv_ts = 0;
 void setup()
 {  
   //randomSeed(analogRead(3));
+#ifdef WAIT_FC_PWM  
+  pinMode(10, INPUT);
+#endif  
 
   pinMode(SHUT_GPIO_RF, OUTPUT);
   pinMode(SHUT_GPIO_RR, OUTPUT);
@@ -122,6 +126,15 @@ void setup()
 #else
   Serial.println("left wall");
 #endif
+
+#ifdef WAIT_FC_PWM  
+  int pwm_value = 1000;  
+  while (pwm_value < 1500) {
+    delay(10);
+    pwm_value = pulseIn(10, HIGH);    
+  }
+  Serial.println("setup done");
+#endif  
 }
 
 void loop()
